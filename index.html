@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Poyoya Place</title>
   <link rel="stylesheet" href="style.css">
   <!-- SDK Discord pour les Embedded Apps -->
@@ -16,15 +16,21 @@
     </header>
 
     <main>
-      <!-- Grille Canvas -->
-      <div class="canvas-container">
+      <!-- Zone d'affichage du Canvas -->
+      <div class="canvas-container" id="canvasContainer">
         <canvas id="placeCanvas" width="500" height="500"></canvas>
       </div>
 
       <!-- Barre d'outils -->
       <div class="toolbar">
-        <label for="colorPicker">Couleur :</label>
-        <input type="color" id="colorPicker" value="#FF0000">
+        <div class="color-picker-group">
+          <label for="colorPicker">Couleur :</label>
+          <input type="color" id="colorPicker" value="#FF0000">
+        </div>
+
+        <div class="info-group">
+          <span id="coordsDisplay">X: 0, Y: 0</span>
+        </div>
 
         <button id="placeBtn">Poser le pixel</button>
         <div id="cooldownTimer">Prêt !</div>
