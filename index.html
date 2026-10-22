@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poyoya Place</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- SDK Discord pour les Embedded Apps -->
+  <script src="https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@1.1.0/dist/index.global.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Poyoya R/Place 🎨</h1>
+      <div id="user-info">Chargement du profil Discord...</div>
+    </header>
+
+    <main>
+      <!-- Grille Canvas -->
+      <div class="canvas-container">
+        <canvas id="placeCanvas" width="500" height="500"></canvas>
+      </div>
+
+      <!-- Barre d'outils -->
+      <div class="toolbar">
+        <label for="colorPicker">Couleur :</label>
+        <input type="color" id="colorPicker" value="#FF0000">
+
+        <button id="placeBtn">Poser le pixel</button>
+        <div id="cooldownTimer">Prêt !</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
