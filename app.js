@@ -9,34 +9,75 @@ const cooldownDisplay = document.getElementById('cooldownTimer');
 const userInfoDisplay = document.getElementById('user-info');
 const coordsDisplay = document.getElementById('coordsDisplay');
 
-// Dimensions du canvas
 const GRID_SIZE = 500;
 canvas.width = GRID_SIZE;
 canvas.height = GRID_SIZE;
 
-// Remplir le canvas en blanc par défaut
-ctx.fillStyle = '#FFFFFF';
-ctx.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
+// Matrice pour stocker les couleurs de chaque pixel (blanc par défaut "#FFFFFF")
+let pixelData = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill("#FFFFFF"));
 
-// Variables de caméra / zoom
 let scale = 1;
 let panX = 0;
 let panY = 0;
 
-let selectedX = 0;
-let selectedY = 0;
+let selectedX = null;
+let selectedY = null;
 let currentUser = null;
 let lastPlacedTime = 0;
-const COOLDOWN_MS = 5 * 60 * 1000;
+const COOLDOWN_MS = 3 * 60 * 1000; // Changé à 3 minutes
 
-// Variables pour les contrôles (Souris & Tactile)
 let isDragging = false;
 let startX = 0;
 let startY = 0;
 let touchStartDist = 0;
 let initialScale = 1;
 
-// Centrer le canvas au chargement
+// Redessiner tout le canvas (pixels + quadrillage + sélection)
+function drawCanvas() {
+  ctx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+
+  // 1. Dessiner les pixels
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let y = 0; y < GRID_SIZE; y++) {
+      if (pixelData[y][x] !== "#FFFFFF") {
+        ctx.fillStyle = pixelData[y][x];
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+
+  // 2. Dessiner un quadrillage très fin (visible seulement si on zoome assez)
+  if (scale > 4) {
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.08)";
+    ctx.lineWidth = 0.05; // Ligne ultra-fine
+    ctx.beginPath();
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, GRID_SIZE);
+      ctx.moveTo(0, i);
+      ctx.lineTo(GRID_SIZE, i);
+    }
+    ctx.stroke();
+  }
+
+  // 3. Contour doré scintillant pour la case sélectionnée
+  if (selectedX !== null && selectedY !== null) {
+    // Effet scintillant basé sur le temps (oscillation alpha)
+    const pulse = (Math.sin(Date.now() / 150) + 1) / 2; // Entre 0 et 1
+    const glowAlpha = 0.4 + pulse * 0.6;
+
+    ctx.strokeStyle = `rgba(255, 215, 0, ${glowAlpha})`; // Or (Gold)
+    ctx.lineWidth = 0.15;
+    ctx.strokeRect(selectedX, selectedY, 1, 1);
+  }
+}
+
+// Boucle d'animation pour faire vivre le scintillement doré en continu
+function animLoop() {
+  drawCanvas();
+  requestAnimationFrame(animLoop);
+}
+
 function centerCanvas() {
   const rect = container.getBoundingClientRect();
   scale = Math.min(rect.width, rect.height) / GRID_SIZE * 0.9;
@@ -50,14 +91,12 @@ function updateTransform() {
   canvas.style.transformOrigin = '0 0';
 }
 
-// 1. Zoom à la molette (Souris)
+// Zoom molette
 container.addEventListener('wheel', (e) => {
   e.preventDefault();
-  
   const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-  const newScale = Math.min(Math.max(0.5, scale * zoomFactor), 50);
+  const newScale = Math.min(Math.max(0.5, scale * zoomFactor), 60);
 
-  // Zoom ciblé sur la position de la souris
   const rect = container.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
@@ -69,9 +108,9 @@ container.addEventListener('wheel', (e) => {
   updateTransform();
 }, { passive: false });
 
-// 2. Déplacement à la souris
+// Déplacement souris
 container.addEventListener('mousedown', (e) => {
-  if (e.button === 0) { // Clic gauche
+  if (e.button === 0) {
     isDragging = true;
     startX = e.clientX - panX;
     startY = e.clientY - panY;
@@ -90,7 +129,7 @@ window.addEventListener('mouseup', () => {
   isDragging = false;
 });
 
-// 3. Gestion Tactile (Zoom à deux doigts & déplacement)
+// Tactile
 container.addEventListener('touchstart', (e) => {
   if (e.touches.length === 1) {
     isDragging = true;
@@ -119,7 +158,7 @@ container.addEventListener('touchmove', (e) => {
 
     if (touchStartDist > 0) {
       const zoomFactor = dist / touchStartDist;
-      const newScale = Math.min(Math.max(0.5, initialScale * zoomFactor), 50);
+      const newScale = Math.min(Math.max(0.5, initialScale * zoomFactor), 60);
       
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
@@ -138,7 +177,7 @@ container.addEventListener('touchend', () => {
   touchStartDist = 0;
 });
 
-// 4. Sélection du pixel
+// Sélection d'une case au clic
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
@@ -147,18 +186,22 @@ canvas.addEventListener('click', (e) => {
   selectedX = Math.floor(clickX / scale);
   selectedY = Math.floor(clickY / scale);
 
-  // Limiter les coordonnées à la grille 500x500
   selectedX = Math.max(0, Math.min(GRID_SIZE - 1, selectedX));
   selectedY = Math.max(0, Math.min(GRID_SIZE - 1, selectedY));
 
   coordsDisplay.innerText = `X: ${selectedX}, Y: ${selectedY}`;
 });
 
-// 5. Poser le pixel
+// Poser le pixel
 placeBtn.addEventListener('click', async () => {
+  if (selectedX === null || selectedY === null) {
+    alert("Sélectionne d'abord une case sur la grille !");
+    return;
+  }
+
   const now = Date.now();
   if (now - lastPlacedTime < COOLDOWN_MS) {
-    alert("Attends la fin du cooldown de 5 minutes !");
+    alert("Attends la fin du cooldown de 3 minutes !");
     return;
   }
 
@@ -171,26 +214,17 @@ placeBtn.addEventListener('click', async () => {
   };
 
   try {
-    // Application locale immédiate pour le test
-    ctx.fillStyle = payload.color;
-    ctx.fillRect(payload.x, payload.y, 1, 1);
+    // Appliquer localement le pixel dans la matrice
+    pixelData[selectedY][selectedX] = payload.color;
     
     lastPlacedTime = Date.now();
     startCooldown();
-
-    /* Quand ton bot sera prêt, décommente ceci :
-    const response = await fetch(`${BOT_API_URL}/api/place-pixel`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    */
   } catch (err) {
-    console.error("Erreur de connexion :", err);
+    console.error("Erreur :", err);
   }
 });
 
-// 6. Timer de 5 minutes
+// Timer de 3 minutes
 function startCooldown() {
   placeBtn.disabled = true;
   const interval = setInterval(() => {
@@ -207,6 +241,6 @@ function startCooldown() {
   }, 1000);
 }
 
-// Initialisation au démarrage
 window.addEventListener('resize', centerCanvas);
 centerCanvas();
+requestAnimationFrame(animLoop); // Lancement de l'animation en continu
