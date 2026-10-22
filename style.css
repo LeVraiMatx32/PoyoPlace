@@ -1,6 +1,6 @@
 * {
   box-sizing: border-box;
-  touch-action: none; /* Empêche le défilement par défaut sur mobile pour gérer le zoom tactile */
+  touch-action: none;
 }
 
 body {
@@ -63,7 +63,7 @@ main {
 }
 
 canvas {
-  image-rendering: pixelated; /* Pour garder des pixels parfaitement nets au zoom */
+  image-rendering: pixelated;
   position: absolute;
   top: 0;
   left: 0;
