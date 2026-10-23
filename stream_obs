@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; font-family: sans-serif; }
+        #container { width: 100vw; height: 100vh; position: relative; }
+        video, img { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            max-width: 100%; max-height: 100%; object-fit: contain; 
+        }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #tts-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(142, 68, 173, 0.9);
+            border: 2px solid #a55eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            max-width: 400px;
+            word-wrap: break-word;
+            z-index: 10;
+        }
+
+        #start-btn { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); color: white; border: none;
+            z-index: 999; cursor: pointer; font-size: 20px;
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <button id="start-btn" onclick="this.style.display='none'">OH ! CLIQUE ICI CHACAL</button>
+
+    <div id="container"></div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://poyochat-default-rtdb.europe-west1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const container = document.getElementById('container');
+
+        database.ref('obs_trigger').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            if (Date.now() - data.timestamp > 10000) return;
+
+            container.innerHTML = '';
+
+            if (data.type === 'video') {
+                const video = document.createElement('video');
+                video.src = data.url;
+                video.autoplay = true;
+                video.className = 'fade-in';
+                video.onended = () => { container.innerHTML = ''; };
+                container.appendChild(video);
+            } 
+            else if (data.type === 'image') {
+                const img = document.createElement('img');
+                img.src = data.url;
+                img.className = 'fade-in';
+                container.appendChild(img);
+                setTimeout(() => { container.innerHTML = ''; }, 7000);
+            }
+            else if (data.type === 'audio') {
+                const audio = new Audio(data.url);
+                audio.play().catch(e => console.error("Erreur audio:", e));
+            }
+            else if (data.type === 'tts') {
+                const ttsBox = document.createElement('div');
+                ttsBox.id = 'tts-box';
+                ttsBox.className = 'fade-in';
+                
+                const authorName = data.author || 'Un membre';
+                ttsBox.innerText = `${authorName} dit : ${data.text}`;
+                container.appendChild(ttsBox);
+
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(`${authorName} dit : ${data.text}`);
+                    utterance.lang = 'fr-FR';
+                    utterance.rate = 1.0;
+                    
+                    utterance.onend = () => {
+                        setTimeout(() => { container.innerHTML = ''; }, 1000);
+                    };
+
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    setTimeout(() => { container.innerHTML = ''; }, 6000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
